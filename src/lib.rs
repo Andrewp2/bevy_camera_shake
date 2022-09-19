@@ -1,27 +1,34 @@
 use bevy::{
-    prelude::{
-        Camera2d, Camera3d, Component, EulerRot, Plugin, Quat, Query, Res, Transform, Vec2, Vec3,
-    },
+    prelude::{warn, Component, EulerRot, Plugin, Quat, Query, Res, Transform, Vec2, Vec3},
     time::Time,
 };
 
+// A source of randomness for shaking the camera.
+pub trait RandomSource: Send + Sync {
+    // Produces a random float between -1.0 and 1.0.
+    fn rand(&self, time: f32) -> f32;
+}
+
+struct NotRandom;
+
+impl RandomSource for NotRandom {
+    fn rand(&self, _time: f32) -> f32 {
+        warn!("You probably need to set a random source for the shaking to work properly!!!");
+        0.5
+    }
+}
+
 #[derive(Component)]
-pub struct Camera3dShake {
+pub struct Shake3d {
     pub max_offset: Vec3,
     pub max_yaw_pitch_roll: Vec3,
     pub trauma: f32,
     pub trauma_power: f32,
     pub decay: f32,
-    pub base_transform: Transform,
-    pub shake_transform: Transform,
-    pub random_source: fn(f32, f32) -> f32,
+    pub random_sources: [Box<dyn RandomSource>; 6],
 }
 
-fn not_random(_seed: f32, _time: f32) -> f32 {
-    0.5
-}
-
-impl Default for Camera3dShake {
+impl Default for Shake3d {
     fn default() -> Self {
         Self {
             max_offset: Vec3::new(0.0, 0.0, 0.0),
@@ -29,26 +36,29 @@ impl Default for Camera3dShake {
             trauma: 0.0,
             trauma_power: 2.0,
             decay: 0.8,
-            base_transform: Transform::default(),
-            shake_transform: Transform::default(),
-            random_source: not_random,
+            random_sources: [
+                Box::new(NotRandom),
+                Box::new(NotRandom),
+                Box::new(NotRandom),
+                Box::new(NotRandom),
+                Box::new(NotRandom),
+                Box::new(NotRandom),
+            ],
         }
     }
 }
 
 #[derive(Component)]
-pub struct Camera2dShake {
+pub struct Shake2d {
     pub max_offset: Vec2,
     pub max_roll: f32,
     pub trauma: f32,
     pub trauma_power: f32,
     pub decay: f32,
-    pub base_transform: Transform,
-    pub shake_transform: Transform,
-    pub random_source: fn(f32, f32) -> f32,
+    pub random_sources: [Box<dyn RandomSource>; 3],
 }
 
-impl Default for Camera2dShake {
+impl Default for Shake2d {
     fn default() -> Self {
         Self {
             max_offset: Vec2::new(100.0, 100.0),
@@ -56,98 +66,92 @@ impl Default for Camera2dShake {
             trauma: 0.0,
             trauma_power: 2.0,
             decay: 0.8,
-            base_transform: Transform::default(),
-            shake_transform: Transform::default(),
-            random_source: not_random,
+            random_sources: [
+                Box::new(NotRandom),
+                Box::new(NotRandom),
+                Box::new(NotRandom),
+            ],
         }
     }
 }
 
-struct CameraShakePlugin;
+fn apply_shake_3d(mut query: Query<(&mut Transform, &mut Shake3d)>, time: Res<Time>) {
+    for (mut transform, mut shake_settings) in query.iter_mut() {
+        shake_settings.trauma = f32::max(
+            shake_settings.trauma - shake_settings.decay * time.delta_seconds(),
+            0.0,
+        );
+
+        let trauma_amount = f32::powf(shake_settings.trauma, shake_settings.trauma_power);
+
+        if trauma_amount > 0.0 {
+            let shake_translation = shake_settings.max_offset
+                * trauma_amount
+                * Vec3::new(
+                    shake_settings.random_sources[0].rand(time.time_since_startup().as_secs_f32()),
+                    shake_settings.random_sources[1].rand(time.time_since_startup().as_secs_f32()),
+                    shake_settings.random_sources[2].rand(time.time_since_startup().as_secs_f32()),
+                );
+
+            let rotation = shake_settings.max_yaw_pitch_roll
+                * trauma_amount
+                * Vec3::new(
+                    shake_settings.random_sources[3].rand(time.time_since_startup().as_secs_f32()),
+                    shake_settings.random_sources[4].rand(time.time_since_startup().as_secs_f32()),
+                    shake_settings.random_sources[5].rand(time.time_since_startup().as_secs_f32()),
+                );
+
+            let shake_rotation =
+                Quat::from_euler(EulerRot::YXZ, rotation.x, rotation.y, rotation.z);
+            transform.translation = shake_translation;
+            transform.rotation = shake_rotation;
+        } else {
+            transform.translation = Vec3::default();
+            transform.rotation = Quat::default();
+        }
+    }
+}
+
+fn apply_shake_2d(mut query: Query<(&mut Transform, &mut Shake2d)>, time: Res<Time>) {
+    for (mut transform, mut shake_settings) in query.iter_mut() {
+        shake_settings.trauma = f32::max(
+            shake_settings.trauma - shake_settings.decay * time.delta_seconds(),
+            0.0,
+        );
+
+        let trauma_amount = f32::powf(shake_settings.trauma, shake_settings.trauma_power);
+        if trauma_amount > 0.0 {
+            let offset = shake_settings.max_offset
+                * trauma_amount
+                * Vec2::new(
+                    shake_settings.random_sources[0].rand(time.time_since_startup().as_secs_f32()),
+                    shake_settings.random_sources[1].rand(time.time_since_startup().as_secs_f32()),
+                );
+
+            let shake_translation = Vec3::new(offset.x, offset.y, 0.0);
+
+            let shake_rotation = Quat::from_euler(
+                EulerRot::YXZ,
+                0.0,
+                0.0,
+                shake_settings.max_roll
+                    * trauma_amount
+                    * shake_settings.random_sources[2]
+                        .rand(time.time_since_startup().as_secs_f32()),
+            );
+            transform.translation = shake_translation;
+            transform.rotation = shake_rotation;
+        } else {
+            transform.translation = Vec3::default();
+            transform.rotation = Quat::default();
+        }
+    }
+}
+
+pub struct CameraShakePlugin;
 
 impl Plugin for CameraShakePlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_system(apply_shake_2d).add_system(apply_shake_3d);
-    }
-}
-
-fn apply_shake_2d(
-    mut query: Query<(&mut Transform, &mut Camera2dShake, &Camera2d)>,
-    time: Res<Time>,
-) {
-    for (mut transform, mut shake_settings, _) in query.iter_mut() {
-        shake_settings.trauma = f32::max(
-            shake_settings.trauma - shake_settings.decay * time.delta_seconds(),
-            0.0,
-        );
-
-        let trauma_amount = f32::powf(shake_settings.trauma, shake_settings.trauma_power);
-
-        let offset = shake_settings.max_offset
-            * trauma_amount
-            * Vec2::new(
-                (shake_settings.random_source)(0.0, time.delta_seconds()),
-                (shake_settings.random_source)(1.0, time.delta_seconds()),
-            );
-
-        shake_settings.shake_transform.translation = Vec3::new(offset.x, offset.y, 0.0);
-
-        shake_settings.shake_transform.rotation = Quat::from_euler(
-            EulerRot::YXZ,
-            0.0,
-            0.0,
-            shake_settings.max_roll
-                * trauma_amount
-                * (shake_settings.random_source)(2.0, time.delta_seconds()),
-        );
-
-        let t = transform.as_mut();
-        t.translation =
-            shake_settings.base_transform.translation + shake_settings.shake_transform.translation;
-        t.rotation = shake_settings
-            .shake_transform
-            .rotation
-            .mul_quat(shake_settings.base_transform.rotation);
-    }
-}
-
-fn apply_shake_3d(
-    mut query: Query<(&mut Transform, &mut Camera3dShake, &Camera3d)>,
-    time: Res<Time>,
-) {
-    for (mut transform, mut shake_settings, _) in query.iter_mut() {
-        shake_settings.trauma = f32::max(
-            shake_settings.trauma - shake_settings.decay * time.delta_seconds(),
-            0.0,
-        );
-
-        let trauma_amount = f32::powf(shake_settings.trauma, shake_settings.trauma_power);
-
-        shake_settings.shake_transform.translation = shake_settings.max_offset
-            * trauma_amount
-            * Vec3::new(
-                (shake_settings.random_source)(0.0, time.delta_seconds()),
-                (shake_settings.random_source)(1.0, time.delta_seconds()),
-                (shake_settings.random_source)(2.0, time.delta_seconds()),
-            );
-
-        let rotation = shake_settings.max_yaw_pitch_roll
-            * trauma_amount
-            * Vec3::new(
-                (shake_settings.random_source)(3.0, time.delta_seconds()),
-                (shake_settings.random_source)(4.0, time.delta_seconds()),
-                (shake_settings.random_source)(5.0, time.delta_seconds()),
-            );
-
-        shake_settings.shake_transform.rotation =
-            Quat::from_euler(EulerRot::YXZ, rotation.x, rotation.y, rotation.z);
-
-        let t = transform.as_mut();
-        t.translation =
-            shake_settings.base_transform.translation + shake_settings.shake_transform.translation;
-        t.rotation = shake_settings
-            .shake_transform
-            .rotation
-            .mul_quat(shake_settings.base_transform.rotation);
     }
 }
