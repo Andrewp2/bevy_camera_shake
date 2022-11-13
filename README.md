@@ -6,7 +6,7 @@ Uses a "trauma" based system to vary the amount of camera shake.
 
 Compatibility:
 
-| bevy_camera_shake_version | Bevy version |
+| bevy_camera_shake version | Bevy version |
 |------------|---------|
 | 0.1.0 | 0.8.1 |
 | 1.0.0 | 0.9.0 |
