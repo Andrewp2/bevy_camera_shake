@@ -30,10 +30,9 @@ impl RandomSource for MyRandom {
 struct Player;
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let camera_id = commands.spawn_bundle(Camera2dBundle::default()).id();
+    let camera_id = commands.spawn(Camera2dBundle::default()).id();
     let shake_id = commands
-        .spawn()
-        .insert(Shake2d {
+        .spawn(Shake2d {
             max_offset: Vec2::new(90.0, 45.0),
             max_roll: 0.2,
             trauma: 0.0,
@@ -41,11 +40,11 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             decay: 0.8,
             random_sources: [Box::new(MyRandom), Box::new(MyRandom), Box::new(MyRandom)],
         })
-        .insert_bundle(SpatialBundle::default())
+        .insert(SpatialBundle::default())
         .id();
 
     let player_id = commands
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             texture: asset_server.load("duck.png"),
             transform: Transform::from_xyz(0., 0., 0.),
             ..default()
@@ -54,7 +53,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .id();
 
     for _ in 0..5000 {
-        commands.spawn_bundle(SpriteBundle {
+        commands.spawn(SpriteBundle {
             texture: asset_server.load("duck.png"),
             transform: Transform {
                 translation: Vec3::new((random_number()) * 2000.0, (random_number()) * 1000.0, 0.0),
@@ -66,6 +65,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     }
     commands.entity(player_id).push_children(&[shake_id]);
     commands.entity(shake_id).push_children(&[camera_id]);
+    println!("Press R to add trauma to the camera.");
 }
 
 fn player_movement(

@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::window::CursorGrabMode;
 use bevy_camera_shake::{CameraShakePlugin, RandomSource, Shake3d};
 use rand::{thread_rng, Rng};
 
@@ -35,13 +36,13 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.spawn_bundle(PbrBundle {
+    commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Plane { size: 150.0 })),
         material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
         transform: Transform::from_xyz(0.0, -0.5, 0.0),
         ..default()
     });
-    commands.spawn_bundle(PointLightBundle {
+    commands.spawn(PointLightBundle {
         point_light: PointLight {
             intensity: 1500.0,
             shadows_enabled: true,
@@ -51,14 +52,13 @@ fn setup(
         ..default()
     });
     let camera_id = commands
-        .spawn_bundle(Camera3dBundle {
+        .spawn(Camera3dBundle {
             transform: Transform::from_xyz(0.0, 0.0, 0.0).looking_at(Vec3::NEG_Z, Vec3::Y),
             ..Default::default()
         })
         .id();
     let shake_id = commands
-        .spawn()
-        .insert(Shake3d {
+        .spawn(Shake3d {
             max_offset: Vec3::new(0.0, 0.0, 0.0),
             max_yaw_pitch_roll: Vec3::new(0.1, 0.1, 0.1),
             trauma: 0.0,
@@ -73,19 +73,18 @@ fn setup(
                 Box::new(MyRandom),
             ],
         })
-        .insert_bundle(SpatialBundle::default())
+        .insert(SpatialBundle::default())
         .id();
 
     let player_id = commands
-        .spawn()
-        .insert(Player { speed: 5.0 })
-        .insert_bundle(SpatialBundle {
+        .spawn(Player { speed: 5.0 })
+        .insert(SpatialBundle {
             ..Default::default()
         })
         .id();
 
     for _ in 0..250 {
-        commands.spawn_bundle(PbrBundle {
+        commands.spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
             material: materials.add(Color::rgb(0.3, 0.7, 0.8).into()),
             transform: Transform {
@@ -102,6 +101,7 @@ fn setup(
     }
     commands.entity(player_id).push_children(&[shake_id]);
     commands.entity(shake_id).push_children(&[camera_id]);
+    println!("Press R to add trauma to the camera.");
 }
 
 const TRAUMA_AMOUNT: f32 = 0.5;
@@ -121,7 +121,7 @@ use bevy::ecs::event::{Events, ManualEventReader};
 use bevy::input::mouse::MouseMotion;
 
 /// Keeps track of mouse motion events, pitch, and yaw
-#[derive(Default)]
+#[derive(Default, Resource)]
 struct InputState {
     reader_motion: ManualEventReader<MouseMotion>,
     pitch: f32,
@@ -129,6 +129,7 @@ struct InputState {
 }
 
 /// Mouse sensitivity
+#[derive(Resource)]
 pub struct MouseSensitivity {
     pub sensitivity: f32,
 }
@@ -143,7 +144,11 @@ impl Default for MouseSensitivity {
 
 /// Grabs/ungrabs mouse cursor
 fn toggle_grab_cursor(window: &mut Window) {
-    window.set_cursor_lock_mode(!window.cursor_locked());
+    window.set_cursor_grab_mode(match window.cursor_grab_mode() {
+        CursorGrabMode::None => CursorGrabMode::Confined,
+        CursorGrabMode::Confined => CursorGrabMode::None,
+        CursorGrabMode::Locked => CursorGrabMode::None,
+    });
     window.set_cursor_visibility(!window.cursor_visible());
 }
 
@@ -171,7 +176,8 @@ fn player_move(
             let right = Vec3::new(local_z.z, 0., -local_z.x);
 
             for key in keys.get_pressed() {
-                if window.cursor_locked() {
+                if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.cursor_grab_mode()
+                {
                     match key {
                         KeyCode::W => velocity += forward,
                         KeyCode::S => velocity -= forward,
@@ -205,7 +211,8 @@ fn player_look(
         let mut delta_state = state.as_mut();
         for (mut transform, _) in query.iter_mut() {
             for ev in delta_state.reader_motion.iter(&motion) {
-                if window.cursor_locked() {
+                if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.cursor_grab_mode()
+                {
                     // Using smallest of height or width ensures equal vertical and horizontal sensitivity
                     let window_scale = window.height().min(window.width());
                     delta_state.pitch -=

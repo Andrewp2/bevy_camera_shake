@@ -1,4 +1,4 @@
-Experimental Camera Shake plugin for Bevy
+Third party camera shake plugin for Bevy
 
 Based off of https://www.youtube.com/watch?v=tu-Qe66AvtY
 
@@ -6,4 +6,7 @@ Uses a "trauma" based system to vary the amount of camera shake.
 
 Compatibility:
 
-Bevy_Camera_Shake 0.1.0 - Bevy 0.8.1
+| bevy_camera_shake_version | Bevy version |
+|------------|---------|
+| 0.1.0 | 0.8.1 |
+| 1.0.0 | 0.9.0 |

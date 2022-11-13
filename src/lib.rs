@@ -88,17 +88,17 @@ fn apply_shake_3d(mut query: Query<(&mut Transform, &mut Shake3d)>, time: Res<Ti
             let shake_translation = shake_settings.max_offset
                 * trauma_amount
                 * Vec3::new(
-                    shake_settings.random_sources[0].rand(time.time_since_startup().as_secs_f32()),
-                    shake_settings.random_sources[1].rand(time.time_since_startup().as_secs_f32()),
-                    shake_settings.random_sources[2].rand(time.time_since_startup().as_secs_f32()),
+                    shake_settings.random_sources[0].rand(time.elapsed_seconds()),
+                    shake_settings.random_sources[1].rand(time.elapsed_seconds()),
+                    shake_settings.random_sources[2].rand(time.elapsed_seconds()),
                 );
 
             let rotation = shake_settings.max_yaw_pitch_roll
                 * trauma_amount
                 * Vec3::new(
-                    shake_settings.random_sources[3].rand(time.time_since_startup().as_secs_f32()),
-                    shake_settings.random_sources[4].rand(time.time_since_startup().as_secs_f32()),
-                    shake_settings.random_sources[5].rand(time.time_since_startup().as_secs_f32()),
+                    shake_settings.random_sources[3].rand(time.elapsed_seconds()),
+                    shake_settings.random_sources[4].rand(time.elapsed_seconds()),
+                    shake_settings.random_sources[5].rand(time.elapsed_seconds()),
                 );
 
             let shake_rotation =
@@ -124,8 +124,8 @@ fn apply_shake_2d(mut query: Query<(&mut Transform, &mut Shake2d)>, time: Res<Ti
             let offset = shake_settings.max_offset
                 * trauma_amount
                 * Vec2::new(
-                    shake_settings.random_sources[0].rand(time.time_since_startup().as_secs_f32()),
-                    shake_settings.random_sources[1].rand(time.time_since_startup().as_secs_f32()),
+                    shake_settings.random_sources[0].rand(time.elapsed_seconds()),
+                    shake_settings.random_sources[1].rand(time.elapsed_seconds()),
                 );
 
             let shake_translation = Vec3::new(offset.x, offset.y, 0.0);
@@ -136,8 +136,7 @@ fn apply_shake_2d(mut query: Query<(&mut Transform, &mut Shake2d)>, time: Res<Ti
                 0.0,
                 shake_settings.max_roll
                     * trauma_amount
-                    * shake_settings.random_sources[2]
-                        .rand(time.time_since_startup().as_secs_f32()),
+                    * shake_settings.random_sources[2].rand(time.elapsed_seconds()),
             );
             transform.translation = shake_translation;
             transform.rotation = shake_rotation;

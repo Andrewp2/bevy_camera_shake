@@ -1,6 +1,7 @@
 use std::f32::consts::PI;
 
 use bevy::prelude::*;
+use bevy::window::CursorGrabMode;
 use bevy_camera_shake::{CameraShakePlugin, RandomSource, Shake3d};
 use rand::{thread_rng, Rng};
 
@@ -40,13 +41,13 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.spawn_bundle(PbrBundle {
+    commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Plane { size: 150.0 })),
         material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
         transform: Transform::from_xyz(0.0, -0.5, 0.0),
         ..default()
     });
-    commands.spawn_bundle(PointLightBundle {
+    commands.spawn(PointLightBundle {
         point_light: PointLight {
             intensity: 1500.0,
             shadows_enabled: true,
@@ -56,15 +57,14 @@ fn setup(
         ..default()
     });
     let camera_id = commands
-        .spawn_bundle(Camera3dBundle {
+        .spawn(Camera3dBundle {
             transform: Transform::from_xyz(0.0, 0.0, -15.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..Default::default()
         })
         .insert(ThirdPersonCamera)
         .id();
     let shake_id = commands
-        .spawn()
-        .insert(Shake3d {
+        .spawn(Shake3d {
             max_offset: Vec3::new(0.0, 0.0, 0.0),
             max_yaw_pitch_roll: Vec3::new(0.1, 0.1, 0.1),
             trauma: 0.0,
@@ -79,11 +79,11 @@ fn setup(
                 Box::new(MyRandom),
             ],
         })
-        .insert_bundle(SpatialBundle::default())
+        .insert(SpatialBundle::default())
         .id();
 
     let player_id = commands
-        .spawn_bundle(PbrBundle {
+        .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
             material: materials.add(Color::rgb(1.0, 0.8, 0.6).into()),
             transform: Transform::default(),
@@ -93,7 +93,7 @@ fn setup(
         .id();
 
     let player_face_id = commands
-        .spawn_bundle(PbrBundle {
+        .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
             material: materials.add(Color::rgb(1.0, 0.8, 0.6).into()),
             transform: Transform::from_xyz(0.0, 0.5, 0.5).with_scale(Vec3::new(0.3, 0.1, 0.5)),
@@ -102,7 +102,7 @@ fn setup(
         .id();
 
     for _ in 0..250 {
-        commands.spawn_bundle(PbrBundle {
+        commands.spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
             material: materials.add(Color::rgb(0.3, 0.7, 0.8).into()),
             transform: Transform {
@@ -120,6 +120,7 @@ fn setup(
     commands.entity(player_id).push_children(&[shake_id]);
     commands.entity(player_id).push_children(&[player_face_id]);
     commands.entity(shake_id).push_children(&[camera_id]);
+    println!("Press R to add trauma to the camera.");
 }
 
 const TRAUMA_AMOUNT: f32 = 0.5;
@@ -139,7 +140,7 @@ use bevy::ecs::event::{Events, ManualEventReader};
 use bevy::input::mouse::MouseMotion;
 
 /// Keeps track of mouse motion events, pitch, and yaw
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Resource)]
 struct InputState {
     reader_motion: ManualEventReader<MouseMotion>,
     pitch: f32,
@@ -147,6 +148,7 @@ struct InputState {
 }
 
 /// Mouse sensitivity
+#[derive(Resource)]
 pub struct MouseSensitivity {
     pub sensitivity: f32,
 }
@@ -161,7 +163,11 @@ impl Default for MouseSensitivity {
 
 /// Grabs/ungrabs mouse cursor
 fn toggle_grab_cursor(window: &mut Window) {
-    window.set_cursor_lock_mode(!window.cursor_locked());
+    window.set_cursor_grab_mode(match window.cursor_grab_mode() {
+        CursorGrabMode::None => CursorGrabMode::Confined,
+        CursorGrabMode::Confined => CursorGrabMode::None,
+        CursorGrabMode::Locked => CursorGrabMode::None,
+    });
     window.set_cursor_visibility(!window.cursor_visible());
 }
 
@@ -189,7 +195,8 @@ fn player_move(
             let right = Vec3::new(-local_z.z, 0., local_z.x);
 
             for key in keys.get_pressed() {
-                if window.cursor_locked() {
+                if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.cursor_grab_mode()
+                {
                     match key {
                         KeyCode::W => velocity += forward,
                         KeyCode::S => velocity -= forward,
@@ -225,8 +232,8 @@ fn player_look(
         for (mut transform, _) in camera_query.iter_mut() {
             let (mut player_transform, _) = player_query.get_single_mut().unwrap();
             for ev in delta_state.reader_motion.iter(&motion) {
-                if window.cursor_locked() {
-                    // Using smallest of height or width ensures equal vertical and horizontal sensitivity
+                if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.cursor_grab_mode()
+                {
                     let window_scale = window.height().min(window.width());
                     delta_state.pitch -=
                         (settings.sensitivity * ev.delta.y * window_scale).to_radians();
