@@ -1,7 +1,7 @@
 use std::f32::consts::PI;
 
 use bevy::prelude::*;
-use bevy::window::CursorGrabMode;
+use bevy::window::{CursorGrabMode, PrimaryWindow};
 use bevy_camera_shake::{CameraShakePlugin, RandomSource, Shake3d};
 use rand::{thread_rng, Rng};
 
@@ -42,7 +42,10 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Plane { size: 150.0 })),
+        mesh: meshes.add(Mesh::from(shape::Plane {
+            size: 150.0,
+            subdivisions: 0,
+        })),
         material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
         transform: Transform::from_xyz(0.0, -0.5, 0.0),
         ..default()
@@ -127,9 +130,14 @@ const TRAUMA_AMOUNT: f32 = 0.5;
 
 fn add_shake(mut shakeables: Query<&mut Shake3d>, keyboard_input: Res<Input<KeyCode>>) {
     if keyboard_input.just_pressed(KeyCode::R) {
-        info!("Time to shake!");
         for mut shakeable in shakeables.iter_mut() {
-            shakeable.trauma = f32::min(shakeable.trauma + TRAUMA_AMOUNT, 1.0);
+            let past_trauma = shakeable.trauma;
+            let current_trauma = f32::min(shakeable.trauma + TRAUMA_AMOUNT, 1.0);
+            info!(
+                "Past trauma: {}, Current trauma: {}",
+                past_trauma, current_trauma
+            );
+            shakeable.trauma = current_trauma;
         }
     }
 }
@@ -163,20 +171,19 @@ impl Default for MouseSensitivity {
 
 /// Grabs/ungrabs mouse cursor
 fn toggle_grab_cursor(window: &mut Window) {
-    window.set_cursor_grab_mode(match window.cursor_grab_mode() {
+    window.cursor.grab_mode = match window.cursor.grab_mode {
         CursorGrabMode::None => CursorGrabMode::Confined,
         CursorGrabMode::Confined => CursorGrabMode::None,
         CursorGrabMode::Locked => CursorGrabMode::None,
-    });
-    window.set_cursor_visibility(!window.cursor_visible());
+    };
+    window.cursor.visible = !window.cursor.visible;
 }
 
 /// Grabs the cursor when game first starts
-fn initial_grab_cursor(mut windows: ResMut<Windows>) {
-    if let Some(window) = windows.get_primary_mut() {
-        toggle_grab_cursor(window);
-    } else {
-        warn!("Primary window not found for `initial_grab_cursor`!");
+fn initial_grab_cursor(mut windows: Query<(&mut Window, With<PrimaryWindow>)>) {
+    match windows.get_single_mut() {
+        Ok(mut window) => toggle_grab_cursor(&mut window.0),
+        Err(_) => warn!("Primary window not found for `initial_grab_cursor`!"),
     }
 }
 
@@ -184,18 +191,18 @@ fn initial_grab_cursor(mut windows: ResMut<Windows>) {
 fn player_move(
     keys: Res<Input<KeyCode>>,
     time: Res<Time>,
-    windows: Res<Windows>,
+    mut windows: Query<(&Window, With<PrimaryWindow>)>,
     mut query: Query<(&mut Transform, &Player)>,
 ) {
-    if let Some(window) = windows.get_primary() {
+    if let Ok(window) = windows.get_single() {
         for (mut transform, player) in query.iter_mut() {
             let mut velocity = Vec3::ZERO;
             let local_z = transform.local_z();
-            let forward = Vec3::new(local_z.x, 0., local_z.z);
-            let right = Vec3::new(-local_z.z, 0., local_z.x);
+            let forward = -Vec3::new(local_z.x, 0., local_z.z);
+            let right = Vec3::new(local_z.z, 0., -local_z.x);
 
             for key in keys.get_pressed() {
-                if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.cursor_grab_mode()
+                if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.0.cursor.grab_mode
                 {
                     match key {
                         KeyCode::W => velocity += forward,
@@ -221,20 +228,20 @@ fn player_move(
 /// Handles looking around if cursor is locked
 fn player_look(
     settings: Res<MouseSensitivity>,
-    windows: Res<Windows>,
+    windows: Query<(&Window, With<PrimaryWindow>)>,
     mut state: ResMut<InputState>,
     motion: Res<Events<MouseMotion>>,
     mut camera_query: Query<(&mut Transform, &ThirdPersonCamera), Without<Player>>,
     mut player_query: Query<(&mut Transform, &Player), Without<ThirdPersonCamera>>,
 ) {
-    if let Some(window) = windows.get_primary() {
+    if let Ok(window) = windows.get_single() {
         let mut delta_state = state.as_mut();
         for (mut transform, _) in camera_query.iter_mut() {
             let (mut player_transform, _) = player_query.get_single_mut().unwrap();
             for ev in delta_state.reader_motion.iter(&motion) {
-                if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.cursor_grab_mode()
+                if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.0.cursor.grab_mode
                 {
-                    let window_scale = window.height().min(window.width());
+                    let window_scale = window.0.height().min(window.0.width());
                     delta_state.pitch -=
                         (settings.sensitivity * ev.delta.y * window_scale).to_radians();
                     delta_state.yaw -=
@@ -256,10 +263,10 @@ fn player_look(
     }
 }
 
-fn cursor_grab(keys: Res<Input<KeyCode>>, mut windows: ResMut<Windows>) {
-    if let Some(window) = windows.get_primary_mut() {
+fn cursor_grab(keys: Res<Input<KeyCode>>, mut windows: Query<(&mut Window, With<PrimaryWindow>)>) {
+    if let Ok(mut window) = windows.get_single_mut() {
         if keys.just_pressed(KeyCode::Escape) {
-            toggle_grab_cursor(window);
+            toggle_grab_cursor(&mut window.0);
         }
     } else {
         warn!("Primary window not found for `cursor_grab`!");

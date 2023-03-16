@@ -11,13 +11,6 @@ fn main() {
         .add_system(add_shake)
         .run();
 }
-
-fn random_number() -> f32 {
-    let mut rng = thread_rng();
-    let x: f32 = rng.gen();
-    x * 2.0 - 1.0
-}
-
 struct MyRandom;
 
 impl RandomSource for MyRandom {
@@ -26,11 +19,19 @@ impl RandomSource for MyRandom {
     }
 }
 
+fn random_number() -> f32 {
+    let mut rng = thread_rng();
+    let x: f32 = rng.gen();
+    x * 2.0 - 1.0
+}
+
 #[derive(Component)]
 struct Player;
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    // Create a default camera
     let camera_id = commands.spawn(Camera2dBundle::default()).id();
+    // Create a Shake2d entity
     let shake_id = commands
         .spawn(Shake2d {
             max_offset: Vec2::new(90.0, 45.0),
@@ -52,6 +53,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .insert(Player)
         .id();
 
+    // Spawn 5,000 ducks (to see effect of shake)
     for _ in 0..5000 {
         commands.spawn(SpriteBundle {
             texture: asset_server.load("duck.png"),
@@ -63,11 +65,14 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         });
     }
+    // Make the player the parent of the Shake2d entity.
     commands.entity(player_id).push_children(&[shake_id]);
+    // Make the Shake2d entity the parent of the camera (so the camera moves when the Shake2d component shakes).
     commands.entity(shake_id).push_children(&[camera_id]);
     println!("Press R to add trauma to the camera.");
 }
 
+// Move up or down based on player's input.
 fn player_movement(
     time: Res<Time>,
     mut player_position: Query<(&mut Transform, &Player)>,
@@ -94,13 +99,21 @@ fn player_movement(
     }
 }
 
+// The amount of trauma to add per button press.
 const TRAUMA_AMOUNT: f32 = 0.5;
 
+// Adds trauma to all Shake2d entities when the `r` key is pressed.
+// Limits trauma to a maximum of `1.0`.
 fn add_shake(mut shakeables: Query<&mut Shake2d>, keyboard_input: Res<Input<KeyCode>>) {
     if keyboard_input.just_pressed(KeyCode::R) {
-        info!("Time to shake!");
         for mut shakeable in shakeables.iter_mut() {
-            shakeable.trauma = f32::min(shakeable.trauma + TRAUMA_AMOUNT, 1.0);
+            let past_trauma = shakeable.trauma;
+            let current_trauma = f32::min(shakeable.trauma + TRAUMA_AMOUNT, 1.0);
+            info!(
+                "Past trauma: {}, Current trauma: {}",
+                past_trauma, current_trauma
+            );
+            shakeable.trauma = current_trauma;
         }
     }
 }
