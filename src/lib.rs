@@ -77,7 +77,7 @@ pub struct Shake2d {
     /// Defaults to `Vec2::new(100.0, 100.0)`.
     pub max_offset: Vec2,
     /// The maximum amount of roll allowed in radians.
-    /// Defaults to 0.1
+    /// Defaults to `0.1`.
     pub max_roll: f32,
     /// The starting trauma when created.
     /// Defaults to `0.0`.
@@ -88,6 +88,7 @@ pub struct Shake2d {
     pub trauma_power: f32,
     /// The percentage to decrease trauma per second.
     /// If set to 1, there will be no trauma after 1 second. If set to 0, trauma will not decrease over time.
+    /// If set below 0, trauma will *increase* over time, and if set above 1, trauma will decrease very quickly.
     /// Defaults to `0.8`.
     pub decay: f32,
     /// The random sources for all 3 dimensions.

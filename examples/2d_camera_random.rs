@@ -25,13 +25,14 @@ fn random_number() -> f32 {
     x * 2.0 - 1.0
 }
 
+// Player marker component.
 #[derive(Component)]
 struct Player;
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    // Create a default camera
+    // Create a default camera.
     let camera_id = commands.spawn(Camera2dBundle::default()).id();
-    // Create a Shake2d entity
+    // Create a Shake2d entity.
     let shake_id = commands
         .spawn(Shake2d {
             max_offset: Vec2::new(90.0, 45.0),
@@ -44,6 +45,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .insert(SpatialBundle::default())
         .id();
 
+    // Create the player entity.
     let player_id = commands
         .spawn(SpriteBundle {
             texture: asset_server.load("duck.png"),
@@ -53,7 +55,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .insert(Player)
         .id();
 
-    // Spawn 5,000 ducks (to see effect of shake)
+    // Spawn 5,000 ducks (to see the effects of shaking).
     for _ in 0..5000 {
         commands.spawn(SpriteBundle {
             texture: asset_server.load("duck.png"),
@@ -72,7 +74,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     println!("Press R to add trauma to the camera.");
 }
 
-// Move up or down based on player's input.
+// Move up/down/left/right based on player's input.
 fn player_movement(
     time: Res<Time>,
     mut player_position: Query<(&mut Transform, &Player)>,
