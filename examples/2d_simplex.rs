@@ -8,10 +8,10 @@ use rand::{thread_rng, Rng};
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugin(CameraShakePlugin)
-        .add_startup_system(setup)
-        .add_system(player_movement)
-        .add_system(add_shake)
+        .add_plugins(CameraShakePlugin)
+        .add_systems(Startup, setup)
+        .add_systems(Update, player_movement)
+        .add_systems(Update, add_shake)
         .run();
 }
 

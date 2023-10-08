@@ -1,5 +1,5 @@
 use bevy::{
-    prelude::{warn, Component, EulerRot, Plugin, Quat, Query, Res, Transform, Vec2, Vec3},
+    prelude::{warn, Component, EulerRot, Plugin, Quat, Query, Res, Transform, Update, Vec2, Vec3},
     time::Time,
 };
 
@@ -191,6 +191,6 @@ pub struct CameraShakePlugin;
 
 impl Plugin for CameraShakePlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_system(apply_shake_2d).add_system(apply_shake_3d);
+        app.add_systems(Update, (apply_shake_2d, apply_shake_3d));
     }
 }

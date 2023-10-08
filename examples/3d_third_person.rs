@@ -8,10 +8,10 @@ use rand::{thread_rng, Rng};
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugin(CameraShakePlugin)
-        .add_plugin(NoCameraPlayerPlugin)
-        .add_startup_system(setup)
-        .add_system(add_shake)
+        .add_plugins(CameraShakePlugin)
+        .add_plugins(NoCameraPlayerPlugin)
+        .add_systems(Startup, setup)
+        .add_systems(Update, add_shake)
         .run();
 }
 
@@ -61,7 +61,7 @@ fn setup(
     });
     let camera_id = commands
         .spawn(Camera3dBundle {
-            transform: Transform::from_xyz(0.0, 0.0, -15.0).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_xyz(0.0, 0.5, 15.0).looking_at(Vec3::ZERO, Vec3::Y),
             ..Default::default()
         })
         .insert(ThirdPersonCamera)
@@ -85,11 +85,12 @@ fn setup(
         .insert(SpatialBundle::default())
         .id();
 
+    let player_transform = Transform::default();
     let player_id = commands
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
             material: materials.add(Color::rgb(1.0, 0.8, 0.6).into()),
-            transform: Transform::default(),
+            transform: player_transform,
             ..default()
         })
         .insert(Player { speed: 5.0 })
@@ -98,8 +99,9 @@ fn setup(
     let player_face_id = commands
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-            material: materials.add(Color::rgb(1.0, 0.8, 0.6).into()),
-            transform: Transform::from_xyz(0.0, 0.5, 0.5).with_scale(Vec3::new(0.3, 0.1, 0.5)),
+            material: materials.add(Color::rgb(0.0, 0.8, 0.6).into()),
+            transform: Transform::from_translation(player_transform.forward() * 0.5)
+                .with_scale(Vec3::new(0.3, 0.1, 0.5)),
             ..default()
         })
         .id();
@@ -191,16 +193,14 @@ fn initial_grab_cursor(mut windows: Query<(&mut Window, With<PrimaryWindow>)>) {
 fn player_move(
     keys: Res<Input<KeyCode>>,
     time: Res<Time>,
-    mut windows: Query<(&Window, With<PrimaryWindow>)>,
+    windows: Query<(&Window, With<PrimaryWindow>)>,
     mut query: Query<(&mut Transform, &Player)>,
 ) {
     if let Ok(window) = windows.get_single() {
         for (mut transform, player) in query.iter_mut() {
             let mut velocity = Vec3::ZERO;
-            let local_z = transform.local_z();
-            let forward = -Vec3::new(local_z.x, 0., local_z.z);
-            let right = Vec3::new(local_z.z, 0., -local_z.x);
-
+            let forward = transform.forward();
+            let right = transform.right();
             for key in keys.get_pressed() {
                 if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.0.cursor.grab_mode
                 {
@@ -210,7 +210,7 @@ fn player_move(
                         KeyCode::A => velocity -= right,
                         KeyCode::D => velocity += right,
                         KeyCode::Space => velocity += Vec3::Y,
-                        KeyCode::LShift => velocity -= Vec3::Y,
+                        KeyCode::ShiftLeft => velocity -= Vec3::Y,
                         _ => (),
                     }
                 }
@@ -235,7 +235,7 @@ fn player_look(
     mut player_query: Query<(&mut Transform, &Player), Without<ThirdPersonCamera>>,
 ) {
     if let Ok(window) = windows.get_single() {
-        let mut delta_state = state.as_mut();
+        let delta_state = state.as_mut();
         for (mut transform, _) in camera_query.iter_mut() {
             let (mut player_transform, _) = player_query.get_single_mut().unwrap();
             for ev in delta_state.reader_motion.iter(&motion) {
@@ -248,13 +248,10 @@ fn player_look(
                         (settings.sensitivity * ev.delta.x * window_scale).to_radians();
                     delta_state.pitch = delta_state
                         .pitch
-                        .clamp(f32::to_radians(-75.0), f32::to_radians(5.0));
-                    // Order is important to prevent unintended roll
-                    // Yaw rotation is happening on player instead
-                    transform.rotation = Quat::from_axis_angle(Vec3::Y, PI)
-                        * Quat::from_axis_angle(Vec3::X, delta_state.pitch);
-                    transform.translation = transform.rotation.mul_vec3(Vec3::Z) * 15.0;
+                        .clamp(f32::to_radians(-75.0), f32::to_radians(-5.0));
                     player_transform.rotation = Quat::from_axis_angle(Vec3::Y, delta_state.yaw);
+                    transform.rotation = Quat::from_axis_angle(Vec3::X, delta_state.pitch);
+                    transform.translation = transform.rotation.mul_vec3(Vec3::Z) * 15.0;
                 }
             }
         }
@@ -279,9 +276,9 @@ impl Plugin for NoCameraPlayerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<InputState>()
             .init_resource::<MouseSensitivity>()
-            .add_startup_system(initial_grab_cursor)
-            .add_system(player_move)
-            .add_system(player_look)
-            .add_system(cursor_grab);
+            .add_systems(Startup, initial_grab_cursor)
+            .add_systems(Update, player_move)
+            .add_systems(Update, player_look)
+            .add_systems(Update, cursor_grab);
     }
 }

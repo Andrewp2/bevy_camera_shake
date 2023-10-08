@@ -6,10 +6,10 @@ use rand::{thread_rng, Rng};
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugin(CameraShakePlugin)
-        .add_plugin(NoCameraPlayerPlugin)
-        .add_startup_system(setup)
-        .add_system(add_shake)
+        .add_plugins(CameraShakePlugin)
+        .add_plugins(NoCameraPlayerPlugin)
+        .add_systems(Startup, setup)
+        .add_systems(Update, add_shake)
         .run();
 }
 
@@ -172,15 +172,14 @@ fn initial_grab_cursor(mut windows: Query<(&mut Window, With<PrimaryWindow>)>) {
 fn player_move(
     keys: Res<Input<KeyCode>>,
     time: Res<Time>,
-    mut windows: Query<(&Window, With<PrimaryWindow>)>,
+    windows: Query<(&Window, With<PrimaryWindow>)>,
     mut query: Query<(&mut Transform, &Player)>,
 ) {
     if let Ok(window) = windows.get_single() {
         for (mut transform, player) in query.iter_mut() {
             let mut velocity = Vec3::ZERO;
-            let local_z = transform.local_z();
-            let forward = -Vec3::new(local_z.x, 0., local_z.z);
-            let right = Vec3::new(local_z.z, 0., -local_z.x);
+            let forward = transform.forward();
+            let right = transform.right();
 
             for key in keys.get_pressed() {
                 if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.0.cursor.grab_mode
@@ -191,7 +190,7 @@ fn player_move(
                         KeyCode::A => velocity -= right,
                         KeyCode::D => velocity += right,
                         KeyCode::Space => velocity += Vec3::Y,
-                        KeyCode::LShift => velocity -= Vec3::Y,
+                        KeyCode::ShiftLeft => velocity -= Vec3::Y,
                         _ => (),
                     }
                 }
@@ -215,7 +214,7 @@ fn player_look(
     mut query: Query<(&mut Transform, &Player)>,
 ) {
     if let Ok(window) = windows.get_single() {
-        let mut delta_state = state.as_mut();
+        let delta_state = state.as_mut();
         for (mut transform, _) in query.iter_mut() {
             for ev in delta_state.reader_motion.iter(&motion) {
                 if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.0.cursor.grab_mode
@@ -258,9 +257,9 @@ impl Plugin for NoCameraPlayerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<InputState>()
             .init_resource::<MouseSensitivity>()
-            .add_startup_system(initial_grab_cursor)
-            .add_system(player_move)
-            .add_system(player_look)
-            .add_system(cursor_grab);
+            .add_systems(Startup, initial_grab_cursor)
+            .add_systems(Update, player_move)
+            .add_systems(Update, player_look)
+            .add_systems(Update, cursor_grab);
     }
 }
