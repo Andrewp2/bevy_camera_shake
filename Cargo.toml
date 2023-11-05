@@ -1,6 +1,6 @@
 [package]
 name = "bevy_camera_shake"
-version = "2.0.0"
+version = "3.0.0"
 edition = "2021"
 authors = ["Andrew Peterson"]
 description = "Adds camera shake to your cameras in Bevy Games"
