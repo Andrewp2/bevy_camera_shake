@@ -1,5 +1,3 @@
-use std::f32::consts::PI;
-
 use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, PrimaryWindow};
 use bevy_camera_shake::{CameraShakePlugin, RandomSource, Shake3d};
@@ -238,7 +236,7 @@ fn player_look(
         let delta_state = state.as_mut();
         for (mut transform, _) in camera_query.iter_mut() {
             let (mut player_transform, _) = player_query.get_single_mut().unwrap();
-            for ev in delta_state.reader_motion.iter(&motion) {
+            for ev in delta_state.reader_motion.read(&motion) {
                 if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.0.cursor.grab_mode
                 {
                     let window_scale = window.0.height().min(window.0.width());

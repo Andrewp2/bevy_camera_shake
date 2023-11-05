@@ -1,5 +1,6 @@
 use bevy::{
-    prelude::{warn, Component, EulerRot, Plugin, Quat, Query, Res, Transform, Update, Vec2, Vec3},
+    log::warn,
+    prelude::{Component, EulerRot, Plugin, Quat, Query, Res, Transform, Update, Vec2, Vec3},
     time::Time,
 };
 

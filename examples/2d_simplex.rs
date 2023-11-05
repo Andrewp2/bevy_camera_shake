@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_camera_shake::{CameraShakePlugin, RandomSource, Shake2d};
-use noise::Seedable;
 use noise::{NoiseFn, OpenSimplex};
 use rand::{thread_rng, Rng};
 

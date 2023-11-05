@@ -216,7 +216,7 @@ fn player_look(
     if let Ok(window) = windows.get_single() {
         let delta_state = state.as_mut();
         for (mut transform, _) in query.iter_mut() {
-            for ev in delta_state.reader_motion.iter(&motion) {
+            for ev in delta_state.reader_motion.read(&motion) {
                 if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.0.cursor.grab_mode
                 {
                     // Using smallest of height or width ensures equal vertical and horizontal sensitivity

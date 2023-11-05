@@ -1,3 +1,7 @@
+[11/04/2023]
+
+- Updated to Bevy 0.12.0
+
 [10/07/2023]
 
 - Updated to Bevy 0.11.3
