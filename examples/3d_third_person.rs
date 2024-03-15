@@ -44,7 +44,7 @@ fn setup(
             size: 150.0,
             subdivisions: 0,
         })),
-        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+        material: materials.add(Color::rgb(0.3, 0.5, 0.3)),
         transform: Transform::from_xyz(0.0, -0.5, 0.0),
         ..default()
     });
@@ -87,7 +87,7 @@ fn setup(
     let player_id = commands
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-            material: materials.add(Color::rgb(1.0, 0.8, 0.6).into()),
+            material: materials.add(Color::rgb(1.0, 0.8, 0.6)),
             transform: player_transform,
             ..default()
         })
@@ -97,7 +97,7 @@ fn setup(
     let player_face_id = commands
         .spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-            material: materials.add(Color::rgb(0.0, 0.8, 0.6).into()),
+            material: materials.add(Color::rgb(0.0, 0.8, 0.6)),
             transform: Transform::from_translation(player_transform.forward() * 0.5)
                 .with_scale(Vec3::new(0.3, 0.1, 0.5)),
             ..default()
@@ -107,7 +107,7 @@ fn setup(
     for _ in 0..250 {
         commands.spawn(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-            material: materials.add(Color::rgb(0.3, 0.7, 0.8).into()),
+            material: materials.add(Color::rgb(0.3, 0.7, 0.8)),
             transform: Transform {
                 translation: Vec3::new(
                     (random_number()) * 10.0,
@@ -128,8 +128,8 @@ fn setup(
 
 const TRAUMA_AMOUNT: f32 = 0.5;
 
-fn add_shake(mut shakeables: Query<&mut Shake3d>, keyboard_input: Res<Input<KeyCode>>) {
-    if keyboard_input.just_pressed(KeyCode::R) {
+fn add_shake(mut shakeables: Query<&mut Shake3d>, keyboard_input: Res<ButtonInput<KeyCode>>) {
+    if keyboard_input.just_pressed(KeyCode::KeyR) {
         for mut shakeable in shakeables.iter_mut() {
             let past_trauma = shakeable.trauma;
             let current_trauma = f32::min(shakeable.trauma + TRAUMA_AMOUNT, 1.0);
@@ -180,18 +180,18 @@ fn toggle_grab_cursor(window: &mut Window) {
 }
 
 /// Grabs the cursor when game first starts
-fn initial_grab_cursor(mut windows: Query<(&mut Window, With<PrimaryWindow>)>) {
+fn initial_grab_cursor(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
     match windows.get_single_mut() {
-        Ok(mut window) => toggle_grab_cursor(&mut window.0),
+        Ok(mut window) => toggle_grab_cursor(&mut window),
         Err(_) => warn!("Primary window not found for `initial_grab_cursor`!"),
     }
 }
 
 /// Handles keyboard input and movement
 fn player_move(
-    keys: Res<Input<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    windows: Query<(&Window, With<PrimaryWindow>)>,
+    windows: Query<&Window, With<PrimaryWindow>>,
     mut query: Query<(&mut Transform, &Player)>,
 ) {
     if let Ok(window) = windows.get_single() {
@@ -200,13 +200,13 @@ fn player_move(
             let forward = transform.forward();
             let right = transform.right();
             for key in keys.get_pressed() {
-                if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.0.cursor.grab_mode
+                if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.cursor.grab_mode
                 {
                     match key {
-                        KeyCode::W => velocity += forward,
-                        KeyCode::S => velocity -= forward,
-                        KeyCode::A => velocity -= right,
-                        KeyCode::D => velocity += right,
+                        KeyCode::KeyW => velocity += *forward,
+                        KeyCode::KeyS => velocity -= *forward,
+                        KeyCode::KeyA => velocity -= *right,
+                        KeyCode::KeyD => velocity += *right,
                         KeyCode::Space => velocity += Vec3::Y,
                         KeyCode::ShiftLeft => velocity -= Vec3::Y,
                         _ => (),
@@ -226,7 +226,7 @@ fn player_move(
 /// Handles looking around if cursor is locked
 fn player_look(
     settings: Res<MouseSensitivity>,
-    windows: Query<(&Window, With<PrimaryWindow>)>,
+    windows: Query<&Window, With<PrimaryWindow>>,
     mut state: ResMut<InputState>,
     motion: Res<Events<MouseMotion>>,
     mut camera_query: Query<(&mut Transform, &ThirdPersonCamera), Without<Player>>,
@@ -237,9 +237,9 @@ fn player_look(
         for (mut transform, _) in camera_query.iter_mut() {
             let (mut player_transform, _) = player_query.get_single_mut().unwrap();
             for ev in delta_state.reader_motion.read(&motion) {
-                if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.0.cursor.grab_mode
+                if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.cursor.grab_mode
                 {
-                    let window_scale = window.0.height().min(window.0.width());
+                    let window_scale = window.height().min(window.width());
                     delta_state.pitch -=
                         (settings.sensitivity * ev.delta.y * window_scale).to_radians();
                     delta_state.yaw -=
@@ -258,10 +258,10 @@ fn player_look(
     }
 }
 
-fn cursor_grab(keys: Res<Input<KeyCode>>, mut windows: Query<(&mut Window, With<PrimaryWindow>)>) {
+fn cursor_grab(keys: Res<ButtonInput<KeyCode>>, mut windows: Query<&mut Window, With<PrimaryWindow>>) {
     if let Ok(mut window) = windows.get_single_mut() {
         if keys.just_pressed(KeyCode::Escape) {
-            toggle_grab_cursor(&mut window.0);
+            toggle_grab_cursor(&mut window);
         }
     } else {
         warn!("Primary window not found for `cursor_grab`!");

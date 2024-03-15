@@ -100,20 +100,20 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 fn player_movement(
     time: Res<Time>,
     mut player_position: Query<(&mut Transform, &Player)>,
-    keyboard_input: Res<Input<KeyCode>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
     let speed = 150.0;
     let mut velocity = Vec2::new(0.0, 0.0);
-    if keyboard_input.pressed(KeyCode::W) || keyboard_input.pressed(KeyCode::Up) {
+    if keyboard_input.pressed(KeyCode::KeyW) || keyboard_input.pressed(KeyCode::ArrowUp) {
         velocity.y += 1.0;
     }
-    if keyboard_input.pressed(KeyCode::A) || keyboard_input.pressed(KeyCode::Left) {
+    if keyboard_input.pressed(KeyCode::KeyA) || keyboard_input.pressed(KeyCode::ArrowLeft) {
         velocity.x -= 1.0;
     }
-    if keyboard_input.pressed(KeyCode::S) || keyboard_input.pressed(KeyCode::Down) {
+    if keyboard_input.pressed(KeyCode::KeyS) || keyboard_input.pressed(KeyCode::ArrowDown) {
         velocity.y -= 1.0;
     }
-    if keyboard_input.pressed(KeyCode::D) || keyboard_input.pressed(KeyCode::Right) {
+    if keyboard_input.pressed(KeyCode::KeyD) || keyboard_input.pressed(KeyCode::ArrowRight) {
         velocity.x += 1.0;
     }
 
@@ -128,8 +128,8 @@ const TRAUMA_AMOUNT: f32 = 0.5;
 
 // Adds trauma to all Shake2d entities when the `r` key is pressed.
 // Limits trauma to a maximum of `1.0`.
-fn add_shake(mut shakeables: Query<&mut Shake2d>, keyboard_input: Res<Input<KeyCode>>) {
-    if keyboard_input.just_pressed(KeyCode::R) {
+fn add_shake(mut shakeables: Query<&mut Shake2d>, keyboard_input: Res<ButtonInput<KeyCode>>) {
+    if keyboard_input.just_pressed(KeyCode::KeyR) {
         for mut shakeable in shakeables.iter_mut() {
             let past_trauma = shakeable.trauma;
             let current_trauma = f32::min(shakeable.trauma + TRAUMA_AMOUNT, 1.0);
