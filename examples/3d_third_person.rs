@@ -40,11 +40,8 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Plane {
-            size: 150.0,
-            subdivisions: 0,
-        })),
-        material: materials.add(Color::rgb(0.3, 0.5, 0.3)),
+        mesh: meshes.add(Mesh::from(Plane3d::new(Vec3::Y, Vec2::splat(150.0)))),
+        material: materials.add(Color::srgb(0.3, 0.5, 0.3)),
         transform: Transform::from_xyz(0.0, -0.5, 0.0),
         ..default()
     });
@@ -86,8 +83,8 @@ fn setup(
     let player_transform = Transform::default();
     let player_id = commands
         .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-            material: materials.add(Color::rgb(1.0, 0.8, 0.6)),
+            mesh: meshes.add(Mesh::from(Cuboid::new(1.0, 1.0, 1.0))),
+            material: materials.add(Color::srgb(1.0, 0.8, 0.6)),
             transform: player_transform,
             ..default()
         })
@@ -96,8 +93,8 @@ fn setup(
 
     let player_face_id = commands
         .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-            material: materials.add(Color::rgb(0.0, 0.8, 0.6)),
+            mesh: meshes.add(Mesh::from(Cuboid::new(1.0, 1.0, 1.0))),
+            material: materials.add(Color::srgb(0.0, 0.8, 0.6)),
             transform: Transform::from_translation(player_transform.forward() * 0.5)
                 .with_scale(Vec3::new(0.3, 0.1, 0.5)),
             ..default()
@@ -106,8 +103,8 @@ fn setup(
 
     for _ in 0..250 {
         commands.spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-            material: materials.add(Color::rgb(0.3, 0.7, 0.8)),
+            mesh: meshes.add(Mesh::from(Cuboid::new(1.0, 1.0, 1.0))),
+            material: materials.add(Color::srgb(0.3, 0.7, 0.8)),
             transform: Transform {
                 translation: Vec3::new(
                     (random_number()) * 10.0,
