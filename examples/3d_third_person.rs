@@ -173,7 +173,7 @@ fn toggle_grab_cursor(window: &mut Window) {
 
 /// Grabs the cursor when game first starts
 fn initial_grab_cursor(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
-    match windows.get_single_mut() {
+    match windows.single_mut() {
         Ok(mut window) => toggle_grab_cursor(&mut window),
         Err(_) => warn!("Primary window not found for `initial_grab_cursor`!"),
     }
@@ -186,7 +186,7 @@ fn player_move(
     windows: Query<&Window, With<PrimaryWindow>>,
     mut query: Query<(&mut Transform, &Player)>,
 ) {
-    if let Ok(window) = windows.get_single() {
+    if let Ok(window) = windows.single() {
         for (mut transform, player) in query.iter_mut() {
             let mut velocity = Vec3::ZERO;
             let forward = transform.forward();
@@ -224,10 +224,10 @@ fn player_look(
     mut camera_query: Query<(&mut Transform, &ThirdPersonCamera), Without<Player>>,
     mut player_query: Query<(&mut Transform, &Player), Without<ThirdPersonCamera>>,
 ) {
-    if let Ok(window) = windows.get_single() {
+    if let Ok(window) = windows.single() {
         let delta_state = state.as_mut();
         for (mut transform, _) in camera_query.iter_mut() {
-            let (mut player_transform, _) = player_query.get_single_mut().unwrap();
+            let (mut player_transform, _) = player_query.single_mut().unwrap();
             for ev in delta_state.reader_motion.read(&motion) {
                 if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.cursor_options.grab_mode
                 {
@@ -251,7 +251,7 @@ fn player_look(
 }
 
 fn cursor_grab(keys: Res<ButtonInput<KeyCode>>, mut windows: Query<&mut Window, With<PrimaryWindow>>) {
-    if let Ok(mut window) = windows.get_single_mut() {
+    if let Ok(mut window) = windows.single_mut() {
         if keys.just_pressed(KeyCode::Escape) {
             toggle_grab_cursor(&mut window);
         }
