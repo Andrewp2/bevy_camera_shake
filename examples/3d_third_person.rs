@@ -136,7 +136,7 @@ fn add_shake(mut shakeables: Query<&mut Shake3d>, keyboard_input: Res<ButtonInpu
 
 // Code shamelessly stolen and edited from https://github.com/sburris0/bevy_flycam/blob/master/src/lib.rs
 
-use bevy::ecs::event::{Events, EventCursor};
+use bevy::ecs::event::{EventCursor, Events};
 use bevy::input::mouse::MouseMotion;
 
 /// Keeps track of mouse motion events, pitch, and yaw
@@ -172,10 +172,25 @@ fn toggle_grab_cursor(window: &mut Window) {
 }
 
 /// Grabs the cursor when game first starts
-fn initial_grab_cursor(mut windows: Query<&mut Window, With<PrimaryWindow>>) {
+fn initial_grab_cursor(
+    mut windows: Query<&mut Window, With<PrimaryWindow>>,
+    mut frame_count: Local<u32>,
+    mut grabbed_once: Local<bool>,
+) {
+    if *grabbed_once {
+        return;
+    }
+    // wait until 5 frames have passed (see https://github.com/bevyengine/bevy/issues/16237)
+    *frame_count += 1;
+    if *frame_count < 5 {
+        return;
+    }
     match windows.single_mut() {
-        Ok(mut window) => toggle_grab_cursor(&mut window),
-        Err(_) => warn!("Primary window not found for `initial_grab_cursor`!"),
+        Ok(mut window) => {
+            toggle_grab_cursor(&mut window);
+            *grabbed_once = true;
+        }
+        Err(_) => warn!("Primary window not found for initial_grab_cursor!"),
     }
 }
 
@@ -192,7 +207,8 @@ fn player_move(
             let forward = transform.forward();
             let right = transform.right();
             for key in keys.get_pressed() {
-                if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.cursor_options.grab_mode
+                if let CursorGrabMode::Confined | CursorGrabMode::Locked =
+                    window.cursor_options.grab_mode
                 {
                     match key {
                         KeyCode::KeyW => velocity += *forward,
@@ -229,7 +245,8 @@ fn player_look(
         for (mut transform, _) in camera_query.iter_mut() {
             let (mut player_transform, _) = player_query.single_mut().unwrap();
             for ev in delta_state.reader_motion.read(&motion) {
-                if let CursorGrabMode::Confined | CursorGrabMode::Locked = window.cursor_options.grab_mode
+                if let CursorGrabMode::Confined | CursorGrabMode::Locked =
+                    window.cursor_options.grab_mode
                 {
                     let window_scale = window.height().min(window.width());
                     delta_state.pitch -=
@@ -250,7 +267,10 @@ fn player_look(
     }
 }
 
-fn cursor_grab(keys: Res<ButtonInput<KeyCode>>, mut windows: Query<&mut Window, With<PrimaryWindow>>) {
+fn cursor_grab(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut windows: Query<&mut Window, With<PrimaryWindow>>,
+) {
     if let Ok(mut window) = windows.single_mut() {
         if keys.just_pressed(KeyCode::Escape) {
             toggle_grab_cursor(&mut window);
@@ -266,7 +286,7 @@ impl Plugin for NoCameraPlayerPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<InputState>()
             .init_resource::<MouseSensitivity>()
-            .add_systems(Startup, initial_grab_cursor)
+            .add_systems(Update, initial_grab_cursor)
             .add_systems(Update, player_move)
             .add_systems(Update, player_look)
             .add_systems(Update, cursor_grab);
