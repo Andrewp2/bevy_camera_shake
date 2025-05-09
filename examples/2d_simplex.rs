@@ -47,7 +47,7 @@ struct Player;
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Create a default camera.
-    let camera_id = commands.spawn(Camera2dBundle::default()).id();
+    let camera_id = commands.spawn(Camera2d).id();
     // Create a Shake2d entity.
     // We set decay to a lower value of 0.7. That means after 1 second, only `1.0 - 0.7` or 30% of the trauma will remain.
     // After two seconds, we will have no trauma left because `(1.0 - (2.0 * 0.7)) < 0.0`.
@@ -64,35 +64,39 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                 Box::new(MyNoise::new(2)),
             ],
         })
-        .insert(SpatialBundle::default())
+        .insert(Transform::default())
         .id();
 
     // Create the player entity.
     let player_id = commands
-        .spawn(SpriteBundle {
-            texture: asset_server.load("duck.png"),
-            transform: Transform::from_xyz(0., 0., 0.),
-            ..default()
-        })
+        .spawn((
+            Sprite {
+                image: asset_server.load("duck.png"),
+                ..default()
+            },
+            Transform::from_xyz(0., 0., 0.),
+        ))
         .insert(Player)
         .id();
 
     // Spawn 5,000 ducks (to see the effects of shaking).
     for _ in 0..5000 {
-        commands.spawn(SpriteBundle {
-            texture: asset_server.load("duck.png"),
-            transform: Transform {
+        commands.spawn((
+            Sprite {
+                image: asset_server.load("duck.png"),
+                ..default()
+            },
+            Transform {
                 translation: Vec3::new((random_number()) * 2000.0, (random_number()) * 1000.0, 0.0),
                 rotation: Quat::default(),
                 scale: Vec3::new(0.3, 0.3, 1.0),
             },
-            ..default()
-        });
+        ));
     }
     // Make the player the parent of the Shake2d entity.
-    commands.entity(player_id).push_children(&[shake_id]);
+    commands.entity(player_id).add_children(&[shake_id]);
     // Make the Shake2d entity the parent of the camera (so the camera moves when the Shake2d component shakes).
-    commands.entity(shake_id).push_children(&[camera_id]);
+    commands.entity(shake_id).add_children(&[camera_id]);
     println!("Press R to add trauma to the camera.");
 }
 
@@ -100,26 +104,26 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 fn player_movement(
     time: Res<Time>,
     mut player_position: Query<(&mut Transform, &Player)>,
-    keyboard_input: Res<Input<KeyCode>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
     let speed = 150.0;
     let mut velocity = Vec2::new(0.0, 0.0);
-    if keyboard_input.pressed(KeyCode::W) || keyboard_input.pressed(KeyCode::Up) {
+    if keyboard_input.pressed(KeyCode::KeyW) || keyboard_input.pressed(KeyCode::ArrowUp) {
         velocity.y += 1.0;
     }
-    if keyboard_input.pressed(KeyCode::A) || keyboard_input.pressed(KeyCode::Left) {
+    if keyboard_input.pressed(KeyCode::KeyA) || keyboard_input.pressed(KeyCode::ArrowLeft) {
         velocity.x -= 1.0;
     }
-    if keyboard_input.pressed(KeyCode::S) || keyboard_input.pressed(KeyCode::Down) {
+    if keyboard_input.pressed(KeyCode::KeyS) || keyboard_input.pressed(KeyCode::ArrowDown) {
         velocity.y -= 1.0;
     }
-    if keyboard_input.pressed(KeyCode::D) || keyboard_input.pressed(KeyCode::Right) {
+    if keyboard_input.pressed(KeyCode::KeyD) || keyboard_input.pressed(KeyCode::ArrowRight) {
         velocity.x += 1.0;
     }
 
     for (mut t, _) in player_position.iter_mut() {
-        t.translation.x += velocity.x * time.delta_seconds() * speed;
-        t.translation.y += velocity.y * time.delta_seconds() * speed;
+        t.translation.x += velocity.x * time.delta_secs() * speed;
+        t.translation.y += velocity.y * time.delta_secs() * speed;
     }
 }
 
@@ -128,8 +132,8 @@ const TRAUMA_AMOUNT: f32 = 0.5;
 
 // Adds trauma to all Shake2d entities when the `r` key is pressed.
 // Limits trauma to a maximum of `1.0`.
-fn add_shake(mut shakeables: Query<&mut Shake2d>, keyboard_input: Res<Input<KeyCode>>) {
-    if keyboard_input.just_pressed(KeyCode::R) {
+fn add_shake(mut shakeables: Query<&mut Shake2d>, keyboard_input: Res<ButtonInput<KeyCode>>) {
+    if keyboard_input.just_pressed(KeyCode::KeyR) {
         for mut shakeable in shakeables.iter_mut() {
             let past_trauma = shakeable.trauma;
             let current_trauma = f32::min(shakeable.trauma + TRAUMA_AMOUNT, 1.0);
